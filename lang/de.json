@@ -4,8 +4,8 @@
     "FOLLOWME.collided"      : "Ich bin gegen eine Wand gelaufen; Folge {name} nicht mehr!",
     "FOLLOWME.followYourself": "Folge mir selbst; Das Vertrauen in sich selbst ist wichtig!",
     "FOLLOWME.key_hint"      : "Taste um das Folgen zu starten",
-    "FOLLOWME.snap"          : "Am Gitter ausrichten",
-    "FOLLOWME.snap_hint"     : "Sollen die Token automatisch am Gitter ausgerichtet werden, oder Abstand halten",
-    "FOLLOWME.collision"     : "Kollisionstests",
-    "FOLLOWME.collision_hint": "Kollisionstest für Wände bevor das Folgen startet."
+    "FOLLOWME.unfollow"      : "Folgen beenden",
+    "FOLLOWME.unfollow_hint" : "Ausgewählte Token hören auf, ihren aktuellen Anführern zu folgen",
+    "FOLLOWME.combat"        : "Folgen im Kampf beenden",
+    "FOLLOWME.combat_hint"   : "Sollen alle Token aufhören, einander zu folgen, wenn ein Kampf beginnt?"
 }

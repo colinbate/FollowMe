@@ -11,11 +11,21 @@
  </p>
 
 # Usage
-Select your token, hover the mouse over the one you wish to follow and press the "F" key. Your token now follows behind maintaining the same distance. To stop following, simply move your token.
+Select your token, hover the mouse over the one you wish to follow and press the "F" key. Your token now follows behind maintaining the same distance. To stop following, select the follower and press Shift+F. Moving the follower independently also stops following.
 
 ![ezgif-3-5912d53231](https://user-images.githubusercontent.com/8543541/167747299-fa7949a4-64b7-4106-b378-a1dd4a253922.gif)
 
 The scrolling text above the token on follow and "unfollow" is enabled/disabled by the "core setting" called "Scrolling Status Text".
+
+## No longer configuration
+
+- Follower movement uses Foundry's normal movement behavior: snapped movement stays on the grid, Shift movement remains off-grid.
+- Wall collisions are enforced.
+- Core "Automatic Token Rotation" setting controls facing. A token's "Lock Artwork Rotation" option continues to prevent its artwork from rotating.
+
+## Configuration
+
+The module setting "Stop following in combat" can be enabled to clear all following relationships when combat starts.
 
 # Installation
 It's always better and easier to install modules through in in app browser. Just search for "Follow Me"
@@ -38,7 +48,7 @@ Current support for:
 If you want to translate this module, download [this file](lang/en.json) and translate it. After that open an issue sharing your translation. Also share the default name convention for your language. You can find that by either, finding a system or module that is already translated to your language and open its module.json. It should look something like this: ``` "languages": [ { "lang": "en", "name": "English", "path": "lang/en.json" } ```
 
 # Compatibility
-Tested on [Foundry VTT](https://foundryvtt.com/  "Foundry VTT") version `10`.
+Compatible with [Foundry VTT](https://foundryvtt.com/ "Foundry VTT") versions `13` and `14`.
 
 # Feedback
 All feedback and suggestions are welcome. Please contact me on Discord (Ove#4315), join the discussion on the Modules' [Discord channel](https://discord.gg/5CCAhsKFDp)

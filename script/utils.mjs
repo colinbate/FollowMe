@@ -1,108 +1,167 @@
+const EPSILON = 1e-6;
 
+export function pointDistance(a, b) {
+  return Math.hypot(b.x - a.x, b.y - a.y);
+}
 
-export function vNeg(p){ // Return -1*v
-    return {x:-p.x, y:-p.y};
+export function samePoint(a, b) {
+  return pointDistance(a, b) <= EPSILON;
 }
-export function vAdd(p1, p2){ // Return the sum, p1 + p2
-    return {x:p1.x+p2.x, y:p1.y+p2.y };
+
+export function pathLength(points) {
+  let length = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    length += pointDistance(points[i - 1], points[i]);
+  }
+  return length;
 }
-export function vSub(p1, p2){// Return the difference, p1-p2
-    return {x:p1.x-p2.x, y:p1.y-p2.y };
+
+function interpolate(a, b, fraction) {
+  return {
+    x: a.x + (b.x - a.x) * fraction,
+    y: a.y + (b.y - a.y) * fraction,
+  };
 }
-export function vMult(p,v){ // Multiply vector p with value v
-    return {x:p.x*v, y: p.y*v};  
+
+function cross(a, b) {
+  return a.x * b.y - a.y * b.x;
 }
-export function vDot(p1, p2){ // Return the dot product of p1 and p2
-    return p1.x*p2.x + p1.y*p2.y;
+
+function subtract(a, b) {
+  return { x: a.x - b.x, y: a.y - b.y };
 }
-export function vLen(p){ // Return the length of the vector p
-    return Math.sqrt(p.x**2 + p.y**2);
+
+/**
+ * Find where a newly-added segment first re-enters an existing route.
+ * Returning the end of a collinear overlap is what collapses a U-turn.
+ */
+function segmentIntersection(start, end, routeStart, routeEnd) {
+  const movement = subtract(end, start);
+  const route = subtract(routeEnd, routeStart);
+  const denominator = cross(movement, route);
+  const offset = subtract(routeStart, start);
+
+  if (Math.abs(denominator) > EPSILON) {
+    const movementFraction = cross(offset, route) / denominator;
+    const routeFraction = cross(offset, movement) / denominator;
+    if (
+      movementFraction > EPSILON &&
+      movementFraction <= 1 + EPSILON &&
+      routeFraction >= -EPSILON &&
+      routeFraction <= 1 + EPSILON
+    ) {
+      return {
+        point: interpolate(start, end, Math.min(movementFraction, 1)),
+        movementFraction,
+      };
+    }
+    return null;
+  }
+
+  if (Math.abs(cross(offset, movement)) > EPSILON) return null;
+
+  const movementLengthSquared =
+    movement.x * movement.x + movement.y * movement.y;
+  if (movementLengthSquared <= EPSILON) return null;
+
+  const startFraction =
+    ((routeStart.x - start.x) * movement.x +
+      (routeStart.y - start.y) * movement.y) /
+    movementLengthSquared;
+  const endFraction =
+    ((routeEnd.x - start.x) * movement.x +
+      (routeEnd.y - start.y) * movement.y) /
+    movementLengthSquared;
+  const overlapEnd = Math.min(1, Math.max(startFraction, endFraction));
+  const overlapStart = Math.max(0, Math.min(startFraction, endFraction));
+
+  if (overlapEnd <= EPSILON || overlapStart > overlapEnd + EPSILON) return null;
+  return {
+    point: interpolate(start, end, overlapEnd),
+    movementFraction: overlapEnd,
+  };
 }
-export function vNorm(p){ // Normalize the vector p, p/||p||
-    return vMult(p, 1.0/vLen(p));
-}
-export function vAngle(p){ // The foundry compatible 'rotation angle' to point along the vector p
-    return 90+Math.toDegrees(Math.atan2(p.y, p.x));
-}
-  
-  // An implementation of hermite-like interpolation. The derivative is hermite-like, whereas the position is linearly interpolated
- export class SimpleSpline{
-    constructor(points, smoothness=0.0){
-      this.p = points;
-      this.smoothness = smoothness;
-      this.lengths = [];
-      for (let i = 1; i < this.len; ++i){
-        this.lengths.push( vLen(vSub(this.p[i-1], this.p[i])) );
+
+function appendPoint(route, point) {
+  if (samePoint(route.at(-1), point)) return route;
+
+  let result = route;
+  while (!samePoint(result.at(-1), point)) {
+    const start = result.at(-1);
+    let firstIntersection = null;
+
+    for (let i = 0; i < result.length - 1; i += 1) {
+      const intersection = segmentIntersection(
+        start,
+        point,
+        result[i],
+        result[i + 1],
+      );
+      if (
+        intersection &&
+        (!firstIntersection ||
+          intersection.movementFraction < firstIntersection.movementFraction)
+      ) {
+        firstIntersection = { ...intersection, segmentIndex: i };
       }
-    }
-    parametricLength(){
-      return this.lengths.reduce((p, a)=>p+a,0);
-    }
-    get len (){
-      return this.p.length;
-    }
-    get plen(){
-      return this.parametricLength();
-    }
-  
-    // Position at parametric position t
-    parametricPosition( t ){
-      if (this.len<2){return this.p[0];}    
-      let len = 0;
-      for (let i = 1; i < this.len; ++i){
-        let nlen = this.lengths[i-1];
-        if (len+nlen >= t){
-          let nfrac = (t-len)/(nlen);//normalized fraction
-          // returning (1-nt)*prev + nt*cur
-          return vAdd(vMult(this.p[i-1], 1-nfrac), vMult(this.p[i], nfrac) );
-        }
-        len += nlen;
-      }
-      // we have gone past our parametric length, clamp at last point
-      return this.p[this.len-1];
-    }
-  
-    #iNorm(i){
-      if(i<1){
-        return vNorm(vSub(this.p[0], this.p[1]));
-      }
-      if(i > (this.len-2)){
-        // last (or past last) point, return (last - next to last)
-        return vNorm(vSub(this.p[this.len-2], this.p[this.len-1]));
-      }
-      return vNorm( vSub(this.p[i-1], this.p[i+1]));
     }
 
-    prune(before){
-        if (this.len<=2)return;
-        let cumsum = 0;
-        let i = 0;
-        for(;cumsum < before; ++i){
-            cumsum+=this.lengths[i];
-        }
-        --i;
-        if (i>0){
-            this.lengths = this.lengths.slice(i);
-            this.p = this.p.slice(i);
-        }
+    if (!firstIntersection) {
+      result.push({ x: point.x, y: point.y });
+      break;
     }
-  
-    // Derivative at parametric position t
-    derivative(t){
-      if (t<=0){ 
-        return this.#iNorm(0);
-      }
-      let len = 0;
-      for (let i = 1; i < this.len; ++i){
-        let nlen = this.lengths[i-1];
-        if ((len+nlen) >= t){
-          let nfrac = (t-len)/(nlen);//normalized fraction
-          let p = this.#iNorm(i-1);
-          let n = this.#iNorm(i);
-          return vNorm( vAdd(vMult(p,1-nfrac), vMult(n,nfrac)) );
-        }
-        len += nlen;
-      }
-      return this.#iNorm(this.len);
+
+    result = result.slice(0, firstIntersection.segmentIndex + 1);
+    if (!samePoint(result.at(-1), firstIntersection.point)) {
+      result.push(firstIntersection.point);
     }
   }
+
+  return result;
+}
+
+/**
+ * Add travelled waypoints to a route, removing loops and retraced sections.
+ */
+export function appendPath(route, points) {
+  let result = route.map(({ x, y }) => ({ x, y }));
+  for (const point of points) {
+    if (Number.isFinite(point?.x) && Number.isFinite(point?.y)) {
+      result = appendPoint(result, point);
+    }
+  }
+  return result;
+}
+
+/**
+ * Split a route at a distance from its beginning.
+ */
+export function splitPathAtDistance(points, distance) {
+  if (points.length === 0) return { traversed: [], remaining: [] };
+  if (distance <= EPSILON) {
+    return {
+      traversed: [points[0]],
+      remaining: points.map(({ x, y }) => ({ x, y })),
+    };
+  }
+
+  let travelled = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    const segmentLength = pointDistance(points[i - 1], points[i]);
+    if (travelled + segmentLength + EPSILON >= distance) {
+      const fraction = Math.min((distance - travelled) / segmentLength, 1);
+      const splitPoint = interpolate(points[i - 1], points[i], fraction);
+      const traversed = points.slice(0, i).map(({ x, y }) => ({ x, y }));
+      const remaining = points.slice(i).map(({ x, y }) => ({ x, y }));
+
+      if (!samePoint(traversed.at(-1), splitPoint)) traversed.push(splitPoint);
+      if (!samePoint(splitPoint, remaining[0])) remaining.unshift(splitPoint);
+
+      return { traversed, remaining };
+    }
+    travelled += segmentLength;
+  }
+
+  const copied = points.map(({ x, y }) => ({ x, y }));
+  return { traversed: copied, remaining: [copied.at(-1)] };
+}
